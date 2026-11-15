@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>spotify setup · kryptid kei</title>
+<style>
+:root{--ink:#e6e3f2;--dim:#9a97ad;--lav:#b9a9ff;--mist:#2a2a3a;--bg:#0d0d14;--panel:#16161f;--bad:#ff8aa8;--ok:#9cf0c4}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0;min-height:100vh;background:radial-gradient(1200px 600px at 50% -10%,#1d1b30,transparent),var(--bg);color:var(--ink);font:15px/1.55 ui-monospace,Menlo,Consolas,monospace;display:flex;justify-content:center;padding:28px 16px 60px}
+main{width:100%;max-width:560px}
+h1{font-size:22px;letter-spacing:.04em;margin:0 0 4px;color:var(--lav)}
+.sub{color:var(--dim);margin:0 0 22px}
+.card{background:var(--panel);border:2px solid var(--mist);padding:16px 16px 18px;margin:0 0 14px;clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px)}
+.card h2{font-size:13px;letter-spacing:.12em;text-transform:uppercase;margin:0 0 10px;color:var(--lav)}
+.card p{margin:0 0 10px}
+label{display:block;color:var(--dim);font-size:12px;margin:0 0 4px}
+input,textarea{width:100%;background:#0b0b11;color:var(--ink);border:2px solid var(--mist);padding:10px;font:inherit;font-size:14px;border-radius:0;outline:none}
+input:focus,textarea:focus{border-color:var(--lav)}
+textarea{min-height:96px;resize:vertical;word-break:break-all}
+button{background:var(--lav);color:#14121f;border:0;padding:10px 16px;font:inherit;font-weight:700;letter-spacing:.06em;cursor:pointer;margin:6px 8px 0 0}
+button.ghost{background:transparent;color:var(--lav);border:2px solid var(--lav)}
+button:disabled{opacity:.4;cursor:default}
+code{background:#0b0b11;border:1px solid var(--mist);padding:2px 6px;word-break:break-all}
+.uri{display:block;padding:10px;margin:6px 0 8px;font-size:13px}
+.msg{padding:10px 12px;border:2px solid var(--mist);margin:10px 0 0;font-size:14px}
+.msg.bad{border-color:var(--bad);color:var(--bad)}
+.msg.ok{border-color:var(--ok);color:var(--ok)}
+.hide{display:none}
+ol{margin:0;padding-left:20px}
+li{margin:0 0 6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>◉ spotify setup</h1>
+  <p class="sub">one-time token grab for the Music tab. nobody else needs this page.</p>
+
+  <section class="card" id="s1">
+    <h2>step 1 · your client id</h2>
+    <p>From your app in the <a style="color:var(--lav)" href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener">Spotify developer dashboard</a>. In the app's settings, add this as a <b>Redirect URI</b> (copy it exactly, then hit save there):</p>
+    <code class="uri" id="uri"></code>
+    <button class="ghost" id="copyUri" type="button">copy redirect uri</button>
+    <div style="height:10px"></div>
+    <label for="cid">client id</label>
+    <input id="cid" autocomplete="off" spellcheck="false" placeholder="32 letters + numbers">
+    <button id="go" type="button">connect spotify →</button>
+    <div class="msg bad hide" id="err"></div>
+  </section>
+
+  <section class="card hide" id="s2">
+    <h2>step 2 · your refresh token</h2>
+    <p id="who" class="msg ok" style="margin-top:0"></p>
+    <p>Copy this whole thing:</p>
+    <textarea id="tok" readonly></textarea>
+    <button id="copyTok" type="button">copy token</button>
+    <p style="margin-top:14px">Now in Netlify → <b>Site configuration → Environment variables</b>, add:</p>
+    <ol>
+      <li><code>SPOTIFY_CLIENT_ID</code> = your client id</li>
+      <li><code>SPOTIFY_REFRESH_TOKEN</code> = the token above</li>
+    </ol>
+    <p style="margin-top:10px">Then redeploy (<b>Deploys → Trigger deploy</b>). After it works, delete <code>setup.html</code> from the repo. The token is basically a password to your listening data, so don't paste it anywhere public.</p>
+  </section>
+</main>
+
+<script>
+(function(){
+  var SCOPES='user-read-recently-played user-read-currently-playing playlist-read-private';
+  var REDIRECT=location.origin+location.pathname;
+  var $=function(i){return document.getElementById(i)};
+  $('uri').textContent=REDIRECT;
+
+  function store(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+  function load(k){try{return localStorage.getItem(k)||''}catch(e){return ''}}
+  function sstore(k,v){try{sessionStorage.setItem(k,v)}catch(e){store(k,v)}}
+  function sload(k){try{return sessionStorage.getItem(k)||load(k)}catch(e){return load(k)}}
+  function fail(msg){var e=$('err');e.textContent=msg;e.classList.remove('hide')}
+
+  function rand(n){
+    var a=new Uint8Array(n);crypto.getRandomValues(a);
+    var s='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~',o='';
+    for(var i=0;i<n;i++)o+=s[a[i]%s.length];
+    return o;
+  }
+  function b64url(buf){
+    var s='',b=new Uint8Array(buf);
+    for(var i=0;i<b.length;i++)s+=String.fromCharCode(b[i]);
+    return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+  }
+  async function sha256(t){return crypto.subtle.digest('SHA-256',new TextEncoder().encode(t))}
+
+  function copy(text,btn){
+    var done=function(){var o=btn.textContent;btn.textContent='copied ✓';setTimeout(function(){btn.textContent=o},1400)};
+    if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(text).then(done,function(){fallback()})}else fallback();
+    function fallback(){var t=document.createElement('textarea');t.value=text;document.body.appendChild(t);t.select();try{document.execCommand('copy');done()}catch(e){}t.remove()}
+  }
+  $('copyUri').onclick=function(){copy(REDIRECT,this)};
+  $('copyTok').onclick=function(){copy($('tok').value,this)};
+
+  $('cid').value=load('kk_cid');
+
+  $('go').onclick=async function(){
+    var cid=$('cid').value.trim();
+    if(!/^[a-z0-9]{20,}$/i.test(cid)){fail("that doesn't look like a client id (it's about 32 letters and numbers)");return}
+    if(!window.crypto||!crypto.subtle){fail('this page needs https (it is on netlify, so open the https:// link)');return}
+    store('kk_cid',cid);
+    var verifier=rand(96),state=rand(24);
+    sstore('kk_ver',verifier);sstore('kk_state',state);
+    var challenge=b64url(await sha256(verifier));
+    var q=new URLSearchParams({
+      client_id:cid,response_type:'code',redirect_uri:REDIRECT,
+      code_challenge_method:'S256',code_challenge:challenge,state:state,scope:SCOPES
+    });
+    location.href='https://accounts.spotify.com/authorize?'+q.toString();
+  };
+
+  // coming back from spotify
+  var p=new URLSearchParams(location.search);
+  if(p.get('error')){fail('spotify said: '+p.get('error')+'. (if it says access_denied, just try again and press agree)')}
+  else if(p.get('code')){
+    $('go').disabled=true;
+    (async function(){
+      try{
+        if(p.get('state')!==sload('kk_state'))throw new Error('state mismatch. start again from this page (no old tabs)');
+        var cid=load('kk_cid');
+        var res=await fetch('https://accounts.spotify.com/api/token',{
+          method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
+          body:new URLSearchParams({
+            grant_type:'authorization_code',code:p.get('code'),redirect_uri:REDIRECT,
+            client_id:cid,code_verifier:sload('kk_ver')
+          })
+        });
+        var j=await res.json();
+        if(!res.ok||!j.refresh_token)throw new Error((j.error_description||j.error||'no refresh token came back'));
+        var who='';
+        try{
+          var me=await fetch('https://api.spotify.com/v1/me',{headers:{Authorization:'Bearer '+j.access_token}});
+          if(me.ok){var m=await me.json();who='connected as '+(m.display_name||m.id)+' ✓'}
+          else who='token works, but spotify refused the profile check ('+me.status+').'}
+        catch(e){who='token created ✓'}
+        $('who').textContent=who;
+        $('tok').value=j.refresh_token;
+        $('s2').classList.remove('hide');
+        history.replaceState(null,'',location.pathname); // hide the one-time code from the url
+        try{sessionStorage.removeItem('kk_ver');sessionStorage.removeItem('kk_state')}catch(e){}
+      }catch(e){fail(String(e.message||e));$('go').disabled=false}
+    })();
+  }
+})();
+</script>
+</body>
+</html>
