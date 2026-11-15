@@ -185,20 +185,9 @@ a.hx:hover{transform:rotate(36deg) scale(1.08);color:var(--ink)}a.hx:hover::befo
 .dsk.art::before{content:'';position:absolute;inset:0;z-index:1;border-radius:50%;pointer-events:none;background:radial-gradient(circle closest-side,transparent 0 11%,rgba(201,201,214,.85) 11.6% 17%,rgba(20,20,31,.5) 17.6% 18.4%,transparent 19%);box-shadow:inset 0 0 0 1.5px rgba(201,201,214,.4)}
 .dsk.art::after{z-index:2}
 
-/* phones and small screens */
-@media(max-width:860px){
-.fit{width:auto!important;height:auto!important}
-.stage{width:auto;height:auto;transform:none!important;display:flex;flex-direction:column;align-items:center;padding:64px 4px 30px}
-.stage>*:not(.stk):not(.sp):not(.wires){position:relative;left:auto;top:auto}
-.wires,.sp,.fig{display:none}
-.ttl{position:relative;left:auto;top:auto;font-size:44px;letter-spacing:2px;order:-3;margin-bottom:12px;z-index:10}.cdw{width:min(76vw,300px);height:min(76vw,300px);order:-2}
-.win{width:100%;height:auto;margin-top:-44px}.wbody{height:auto;padding:16px 16px 14px}.pg{height:auto}.pg.sc.on{overflow:visible;padding:2px 0 8px}
-.spec{flex-direction:column;align-items:center}.pcol{width:150px}.fl{width:100%;grid-template-columns:70px 1fr}.links{flex-wrap:wrap}
-.tb{width:100%;height:auto;margin-top:16px;flex-wrap:wrap;padding:8px 8px}.tb::before{inset:0}.tray{margin-left:0}
-.c-soc{grid-template-columns:1fr}.c-gal{grid-template-columns:1fr 1fr}
-.shelf{--dz:70px;--hs:1.2;padding:16px 4px 62px}.pill{white-space:nowrap}.phd h3{font-size:26px}
-.mu-hero{gap:14px;padding:14px 14px}.mu-cd{width:108px;height:108px}
-}
+/* phones: the same desktop layout, just scaled down to fit (fit() in the script does the scaling; pinch to zoom in) */
+@media(max-width:860px){#kk-page{padding:10px 4px}}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 @media(prefers-reduced-motion:reduce){#kk *{animation:none!important}}
 </style>
 </head>
@@ -380,8 +369,7 @@ a.hx:hover{transform:rotate(36deg) scale(1.08);color:var(--ink)}a.hx:hover::befo
 <script>
 (function(){
   var r=document.getElementById('kk'),fw=r.querySelector('.fit'),st=r.querySelector('.stage'),pgs=[].slice.call(r.querySelectorAll('.pg')),tabs=[].slice.call(r.querySelectorAll('.tab'));
-  function fit(){if(window.innerWidth<=860){fw.style.width=fw.style.height='';st.style.transform='';return}
-    var s=Math.min(1,(window.innerWidth-20)/1004,(window.innerHeight-30)/680);st.style.transform='scale('+s+')';fw.style.width=1004*s+'px';fw.style.height=680*s+'px'}
+  function fit(){var m=window.innerWidth<=860?8:20,s=Math.min(1,(window.innerWidth-m)/1004,(window.innerHeight-30)/680);st.style.transform='scale('+s+')';fw.style.width=1004*s+'px';fw.style.height=680*s+'px'}
   function go(t){pgs.forEach(function(p){p.classList.toggle('on',p.dataset.title===t)});tabs.forEach(function(n){n.classList.toggle('on',n.dataset.go===t)});var on=r.querySelector('.pg.on');if(on)on.scrollTop=0}
   [].forEach.call(r.querySelectorAll('[data-go]'),function(el){el.addEventListener('click',function(){go(el.dataset.go)})});
   window.addEventListener('resize',fit);fit();setTimeout(fit,300);
